@@ -243,6 +243,14 @@ canvas{display:block;border-radius:10px;touch-action:none}
         </div>
 
         <div class="card">
+          <label class="c-cyan" style="color:#94a3b8">Bordas do mapa</label>
+          <div class="seg two" style="margin:0">
+            <button data-wrap="1">🌀 ATRAVESSAR</button>
+            <button data-wrap="0">🧱 PAREDE</button>
+          </div>
+        </div>
+
+        <div class="card">
           <label class="c-cyan" style="color:#94a3b8">Dificuldade</label>
           <div class="seg" id="diff-row">
             <button data-diff="easy">FÁCIL</button>
@@ -266,7 +274,7 @@ canvas{display:block;border-radius:10px;touch-action:none}
 
         <button class="btn primary" data-act="play">▶ Jogar agora</button>
         <button class="btn ghost" data-act="history">🏆 Histórico de pontos</button>
-        <p class="hint">Setas / WASD ou deslize na tela • P pausa • M som</p>
+        <p class="hint">Setas / WASD ou deslize na tela • P pausa • M som<br>Com bordas atravessáveis, saia por um lado e entre pelo outro</p>
         <div class="foot-brand"><svg viewBox="0 0 64 58"><use href="#tdp-logo"/></svg><span>© TELAS DO PASSADO</span></div>
       </div>
     </div>
@@ -397,6 +405,7 @@ let newRecord = false;
 // progresso: maior fase já alcançada (libera a seleção de fase inicial)
 let unlocked = Math.min(MAX_LEVEL, Math.max(1, parseInt(store.get('snake_unlocked', '1'), 10) || 1));
 startLevel = Math.min(unlocked, Math.max(1, parseInt(store.get('snake_start', '1'), 10) || 1));
+let wrapWalls = store.get('snake_wrap', '1') === '1';
 let histReturn = 'menu-overlay', histTab = 'best', clearArmed = false, lastRank = 0;
 
 const key = (x, y) => y * N + x;
@@ -557,6 +566,7 @@ function reachable() {
     const c = q.pop();
     for (const [dx, dy] of nb) {
       let x = c.x + dx, y = c.y + dy;
+      if (wrapWalls) { x = (x + N) % N; y = (y + N) % N; }
       if (x < 0 || y < 0 || x >= N || y >= N) continue;
       let k = key(x, y);
       if (obsSet.has(k)) continue;
@@ -695,6 +705,7 @@ function step() {
   for (const p of portals) {
     if (hx === p.x && hy === p.y) { hx = p.targetX; hy = p.targetY; tp = true; break; }
   }
+  if (wrapWalls) { hx = (hx + N) % N; hy = (hy + N) % N; }
   if (hx < 0 || hy < 0 || hx >= N || hy >= N || obsSet.has(key(hx, hy))) { prev = old; finish(false); return; }
 
   const ate = hx === food.x && hy === food.y;
@@ -793,12 +804,13 @@ window.addEventListener('blur', () => { if (state === 'playing' || state === 're
 
 // Cliques de menu (delegação)
 document.addEventListener('click', e => {
-  const b = e.target.closest('[data-act],[data-color],[data-diff],[data-lvl],[data-pick],[data-tab]');
+  const b = e.target.closest('[data-act],[data-color],[data-diff],[data-lvl],[data-pick],[data-tab],[data-wrap]');
   if (!b || b.disabled) return;
   if (b.dataset.color) { colorKey = b.dataset.color; store.set('snake_color', colorKey); syncMenu(); return; }
   if (b.dataset.diff)  { difficulty = b.dataset.diff; store.set('snake_diff', difficulty); loadHigh(); updateHud(); syncMenu(); return; }
   if (b.dataset.lvl)   { startLevel += parseInt(b.dataset.lvl, 10);
                          if (startLevel > unlocked) startLevel = 1; if (startLevel < 1) startLevel = unlocked; syncMenu(); return; }
+  if (b.dataset.wrap)  { wrapWalls = b.dataset.wrap === '1'; store.set('snake_wrap', wrapWalls ? '1' : '0'); syncMenu(); buildBg(); return; }
   if (b.dataset.pick)  { startLevel = parseInt(b.dataset.pick, 10); syncMenu(); return; }
   if (b.dataset.tab)   { histTab = b.dataset.tab; renderHistory(); return; }
   switch (b.dataset.act) {
@@ -880,6 +892,7 @@ function updateHud() {
   document.querySelectorAll('#progress .pip').forEach((p, i) => p.classList.toggle('on', i < fruitsInLevel));
 }
 function syncMenu() {
+  document.querySelectorAll('[data-wrap]').forEach(b => b.classList.toggle('sel', (b.dataset.wrap === '1') === wrapWalls));
   document.querySelectorAll('[data-color]').forEach(b => b.classList.toggle('sel', b.dataset.color === colorKey));
   document.querySelectorAll('[data-diff]').forEach(b => b.classList.toggle('sel', b.dataset.diff === difficulty));
   if (startLevel > unlocked) startLevel = unlocked;
@@ -969,6 +982,16 @@ function buildBg() {
     c.strokeStyle = '#ff5a6a'; c.lineWidth = 1.6; rr(c, x + 1.5, y + 1.5, tile - 3, tile - 3, tile * 0.2); c.stroke();
     c.fillStyle = 'rgba(255,170,180,.28)'; c.fillRect(x + tile * 0.22, y + tile * 0.2, tile * 0.5, tile * 0.12);
   }
+  // Borda do mapa
+  c.save();
+  if (wrapWalls) {
+    c.strokeStyle = 'rgba(0,243,255,.55)'; c.lineWidth = 2; c.setLineDash([6, 6]);
+    c.shadowColor = '#00f3ff'; c.shadowBlur = 8;
+  } else {
+    c.strokeStyle = 'rgba(255,77,94,.85)'; c.lineWidth = 3; c.shadowColor = '#ff4d5e'; c.shadowBlur = 10;
+  }
+  c.strokeRect(1, 1, size - 2, size - 2);
+  c.restore();
 }
 if (window.ResizeObserver) new ResizeObserver(layout).observe(boardEl);
 window.addEventListener('resize', layout);
