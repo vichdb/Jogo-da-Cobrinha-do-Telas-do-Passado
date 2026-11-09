@@ -811,7 +811,7 @@ document.addEventListener('click', e => {
   if (b.dataset.lvl)   { startLevel += parseInt(b.dataset.lvl, 10);
                          if (startLevel > unlocked) startLevel = 1; if (startLevel < 1) startLevel = unlocked; syncMenu(); return; }
   if (b.dataset.wrap)  { wrapWalls = b.dataset.wrap === '1'; store.set('snake_wrap', wrapWalls ? '1' : '0'); syncMenu(); buildBg(); return; }
-  if (b.dataset.pick)  { startLevel = parseInt(b.dataset.pick, 10); syncMenu(); return; }
+  if (b.dataset.pick)  { startLevel = parseInt(b.dataset.pick, 10); $('lvl-grid').classList.add('hidden'); syncMenu(); return; }
   if (b.dataset.tab)   { histTab = b.dataset.tab; renderHistory(); return; }
   switch (b.dataset.act) {
     case 'play': startGame(); break;
